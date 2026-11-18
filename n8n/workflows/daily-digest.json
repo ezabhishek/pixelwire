@@ -1,0 +1,887 @@
+{
+  "id": "pwDailyDigest001",
+  "name": "Pixel Wires · Daily digest",
+  "active": false,
+  "nodes": [
+    {
+      "id": "bf03b597-c050-47ff-a658-86f258418d4c",
+      "name": "Setup notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ],
+      "parameters": {
+        "width": 620,
+        "height": 220,
+        "color": 4,
+        "content": "## Pixel Wires · Daily digest\n1. Open **Config** and fill in `whatsappTo` and `openwaSessionId`.\n2. Select your **GitHub** credential in the 6 GitHub nodes and your **OpenWA API key** credential in **Send WhatsApp**.\n3. Click **Execute workflow** to test, then switch the workflow **Active**.\nRuns daily at 07:00 Asia/Kolkata. Failures send a WhatsApp alert via *Pixel Wires · Digest failure alert*."
+      }
+    },
+    {
+      "id": "6a14747c-04bd-4beb-ac64-fc0380f10968",
+      "name": "Every day 07:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        200
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d0923db5-80ac-41f3-ac08-4908d68d1583",
+      "name": "Run manually",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a559cdc6-b823-477b-aa06-3bf23de448a7",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// ─── Pixel Wires daily digest: settings ──────────────────────────────────────\n// Edit the values in CONFIG, save, then use \"Execute workflow\" to test.\nconst CONFIG = {\n  // WhatsApp number that receives the digest: country code + number, digits only.\n  // Example for India: 919876543210\n  whatsappTo: '',\n  // OpenWA session id: OpenWA dashboard (http://localhost:2785) → Sessions.\n  openwaSessionId: '',\n\n  // Services as seen from inside the n8n Docker container.\n  openwaUrl: 'http://host.docker.internal:2785',\n  ollamaUrl: 'http://host.docker.internal:11434',\n\n  // Where the digest is published. Vercel redeploys on every push to this branch.\n  githubOwner: 'ezabhishek',\n  githubRepo: 'pixelwire',\n  githubBranch: 'main',\n  siteUrl: 'https://pixelwire.vercel.app',\n\n  models: {\n    score: 'qwen3.5:4b', // rates and tags every fetched post (fast, many calls)\n    summary: 'qwen3:8b', // summarizes the shortlisted posts\n    editor: 'gemma4:12b', // picks the final list and writes the intro (one call)\n  },\n\n  postsPerSource: 30, // fetched from each of DEV and Hacker News\n  minScore: 6, // quality score (1-10) needed to reach the shortlist\n  maxCandidates: 20, // shortlist size sent for summaries\n  topN: 10, // posts in the published digest\n  postsInWhatsApp: 5, // posts listed in the WhatsApp message\n};\n// ──────────────────────────────────────────────────────────────────────────────\n\nconst problems = [];\nif (!/^\\d{8,15}$/.test(CONFIG.whatsappTo)) {\n  problems.push('whatsappTo must be your number with country code, digits only (for example 919876543210)');\n}\nif (!CONFIG.openwaSessionId || CONFIG.openwaSessionId.startsWith('__')) {\n  problems.push('openwaSessionId is empty; copy it from the OpenWA dashboard');\n}\nif (CONFIG.topN > CONFIG.maxCandidates) problems.push('topN cannot be larger than maxCandidates');\nif (problems.length > 0) throw new Error(`Config: ${problems.join('; ')}`);\n\n// $now uses the workflow timezone (Asia/Kolkata), so the date matches the 07:00 run.\nreturn [\n  {\n    json: {\n      ...CONFIG,\n      date: $now.toFormat('yyyy-MM-dd'),\n      dateLabel: $now.toFormat('cccc, d LLLL yyyy'),\n      startedAt: $now.toISO(),\n    },\n  },\n];\n"
+      }
+    },
+    {
+      "id": "5e282251-eee4-4682-a921-e5865bf5a40c",
+      "name": "Fetch DEV top posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://dev.to/api/articles?top=1&per_page={{ $json.postsPerSource }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "9a47f399-ce40-47da-a21d-eab668e1569c",
+      "name": "Fetch HN front page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage={{ $('Config').first().json.postsPerSource }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "1cd6c5f8-7a14-4cd5-a10c-874d707a582c",
+      "name": "Normalize posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Turn DEV and Hacker News results into the Article shape the website uses\n// (src/types/article.ts), and drop duplicates that link to the same page.\n\nfunction decodeEntities(text) {\n  const named = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ' };\n  return String(text).replace(/&(#x[0-9a-f]+|#\\d+|[a-z]+);/gi, (match, code) => {\n    if (code[0] === '#') {\n      const value = code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);\n      return Number.isFinite(value) && value > 0 && value <= 0x10ffff ? String.fromCodePoint(value) : match;\n    }\n    return named[code.toLowerCase()] ?? match;\n  });\n}\n\n// n8n's Code sandbox has no URL global, so parse with regexes.\nfunction domainOf(url) {\n  const match = /^https?:\\/\\/([^/?#:]+)/i.exec(url ?? '');\n  return match ? match[1].toLowerCase().replace(/^www\\./, '') : null;\n}\n\nfunction urlKey(url) {\n  const match = /^https?:\\/\\/([^/?#]+)([^?#]*)/i.exec(url ?? '');\n  return match ? `${match[1].replace(/^www\\./i, '')}${match[2].replace(/\\/+$/, '')}`.toLowerCase() : String(url);\n}\n\nconst posts = [];\n\nfor (const { json: a } of $('Fetch DEV top posts').all()) {\n  if (!a || typeof a.id !== 'number' || !a.title || !a.url) continue;\n  const tagList = Array.isArray(a.tag_list) ? a.tag_list : String(a.tag_list ?? '').split(',');\n  const username = a.user?.username ?? 'unknown';\n  posts.push({\n    id: `devto:${a.id}`,\n    source: 'devto',\n    nativeId: String(a.id),\n    title: decodeEntities(a.title.trim()),\n    summary: a.description ? decodeEntities(a.description.trim()) || null : null,\n    url: a.url,\n    domain: 'dev.to',\n    discussionUrl: `${a.url}#comments`,\n    coverImage: a.cover_image || null,\n    tags: [...new Set(tagList.map((t) => t.trim().toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean))],\n    author: {\n      name: a.user?.name?.trim() || username,\n      handle: username,\n      avatarUrl: a.user?.profile_image_90 || undefined,\n      profileUrl: `https://dev.to/${username}`,\n    },\n    publishedAt: a.published_timestamp ?? a.published_at ?? new Date().toISOString(),\n    readingTimeMinutes: a.reading_time_minutes ?? null,\n    score: a.public_reactions_count ?? a.positive_reactions_count ?? 0,\n    commentCount: a.comments_count ?? 0,\n  });\n}\n\nconst hn = $('Fetch HN front page').first()?.json;\nfor (const h of hn?.hits ?? []) {\n  const title = h.title?.trim();\n  if (!title || !h.objectID) continue;\n  const discussionUrl = `https://news.ycombinator.com/item?id=${h.objectID}`;\n  const external = h.url?.trim() || null;\n  posts.push({\n    id: `hackernews:${h.objectID}`,\n    source: 'hackernews',\n    nativeId: String(h.objectID),\n    title: decodeEntities(title),\n    summary: null,\n    url: external ?? discussionUrl,\n    domain: external ? domainOf(external) : 'news.ycombinator.com',\n    discussionUrl,\n    coverImage: null,\n    tags: [],\n    author: {\n      name: h.author,\n      handle: h.author,\n      profileUrl: `https://news.ycombinator.com/user?id=${encodeURIComponent(h.author)}`,\n    },\n    publishedAt: h.created_at,\n    readingTimeMinutes: null,\n    score: h.points ?? 0,\n    commentCount: h.num_comments ?? 0,\n  });\n}\n\nconst seen = new Set();\nconst unique = posts.filter((post) => {\n  const key = urlKey(post.url);\n  if (seen.has(key)) return false;\n  seen.add(key);\n  return true;\n});\n\nif (unique.length === 0) {\n  throw new Error('No posts were fetched from DEV or Hacker News. Check the two fetch nodes for errors.');\n}\n\nreturn unique.map((post) => ({ json: post }));\n"
+      }
+    },
+    {
+      "id": "b6a1172d-9a7c-4a66-aadd-bb45161570ca",
+      "name": "Build scoring requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// One Ollama request per post: a 1-10 quality score, up to three tags and a short reason.\nconst cfg = $('Config').first().json;\n\n// Same tag list as the website's sidebar (generated from src/lib/tags.ts).\nconst TAGS = [\"ai\",\"machinelearning\",\"javascript\",\"typescript\",\"react\",\"node\",\"css\",\"webdev\",\"python\",\"rust\",\"go\",\"java\",\"devops\",\"kubernetes\",\"docker\",\"cloud\",\"security\",\"database\",\"linux\",\"opensource\",\"programming\",\"career\"];\n\nconst SYSTEM = `You are the editor of a daily news digest for professional software developers.\nYou rate one post at a time and answer only with JSON.\n\nScoring guide:\n9-10: news or deep technical content most developers should see: major releases, security incidents, notable research, excellent in-depth tutorials.\n7-8: solid and useful or interesting for many developers.\n5-6: niche but legitimate.\n3-4: thin or generic: beginner listicles, opinion without substance, marketing-heavy posts.\n1-2: spam, crypto or trading promotion, ads, clickbait, off-topic.\n\nUse the whole range. On a typical day only a handful of posts deserve 9 or 10; most solid posts are 6-8.\nJudge the substance, not the popularity numbers. Tags must come from the allowed list; use none if nothing fits.`;\n\nconst SCHEMA = {\n  type: 'object',\n  properties: {\n    score: { type: 'integer', minimum: 1, maximum: 10 },\n    tags: { type: 'array', items: { type: 'string', enum: TAGS }, maxItems: 3 },\n    reason: { type: 'string', maxLength: 160 },\n  },\n  required: ['score', 'tags', 'reason'],\n};\n\nfunction describe(post) {\n  const source = post.source === 'devto' ? 'DEV Community (developer blog platform)' : 'Hacker News (link aggregator)';\n  const lines = [\n    `Title: ${post.title}`,\n    `Source: ${source}`,\n    `Site: ${post.domain ?? 'unknown'}`,\n  ];\n  if (post.tags.length > 0) lines.push(`Author's tags: ${post.tags.join(', ')}`);\n  if (post.summary) lines.push(`Description: ${post.summary.slice(0, 400)}`);\n  lines.push(`Popularity: ${post.score} ${post.source === 'devto' ? 'reactions' : 'points'}, ${post.commentCount} comments`);\n  lines.push(`Allowed tags: ${TAGS.join(', ')}`);\n  return lines.join('\\n');\n}\n\nreturn $input.all().map(({ json: post }) => ({\n  json: {\n    post,\n    request: {\n      model: cfg.models.score,\n      stream: false,\n      think: false,\n      keep_alive: '5m',\n      format: SCHEMA,\n      options: { temperature: 0.1, num_ctx: 4096 },\n      messages: [\n        { role: 'system', content: SYSTEM },\n        { role: 'user', content: describe(post) },\n      ],\n    },\n  },\n}));\n"
+      }
+    },
+    {
+      "id": "20d25b1d-728a-4087-a7f1-826f110a28ba",
+      "name": "Score posts (qwen3.5:4b)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ollamaUrl }}/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 180000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "c3ca39be-f644-4c89-a086-fd533ae5be66",
+      "name": "Pick candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Combine each post with its score, then keep the best ones for summarizing.\nconst cfg = $('Config').first().json;\nconst requests = $('Build scoring requests').all();\nconst responses = $input.all();\n\nfunction parseModelJson(item) {\n  try {\n    return JSON.parse(item?.json?.message?.content ?? '');\n  } catch {\n    return null;\n  }\n}\n\nconst scored = requests.map((request, index) => {\n  const post = request.json.post;\n  const result = parseModelJson(responses[index]);\n  const quality = Number.isInteger(result?.score) ? Math.min(10, Math.max(1, result.score)) : 0;\n  const modelTags = Array.isArray(result?.tags) ? result.tags.filter((tag) => typeof tag === 'string') : [];\n  return {\n    ...post,\n    // HN posts have no tags of their own; DEV posts keep the author's tags.\n    tags: post.source === 'hackernews' ? [...new Set(modelTags)] : post.tags,\n    quality,\n    qualityReason: typeof result?.reason === 'string' ? result.reason : null,\n  };\n});\n\nconst failed = scored.filter((post) => post.quality === 0).length;\nif (failed === scored.length) {\n  throw new Error(`Scoring failed for every post. Is Ollama running, and is \"${cfg.models.score}\" pulled?`);\n}\n\nconst engagement = (post) => post.score + post.commentCount;\nconst ranked = [...scored].sort((a, b) => b.quality - a.quality || engagement(b) - engagement(a));\n\nlet shortlist = ranked.filter((post) => post.quality >= cfg.minScore).slice(0, cfg.maxCandidates);\nif (shortlist.length < cfg.topN) {\n  // A slow news day: fill up with the next best so the digest still has topN posts.\n  shortlist = ranked.filter((post) => post.quality > 0).slice(0, cfg.topN);\n}\n\nreturn shortlist.map((post) => ({ json: { ...post, scoringFailures: failed, fetchedCount: scored.length } }));\n"
+      }
+    },
+    {
+      "id": "a27b23e2-f8c1-4209-ae71-b023fe822f8f",
+      "name": "Fetch article pages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "PixelWiresDigest/1.0 (+https://pixelwire.vercel.app)"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          },
+          "batching": {
+            "batch": {
+              "batchSize": 4,
+              "batchInterval": 0
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "8baa3619-3899-422b-a1e1-4eb37087be57",
+      "name": "Build summary requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Extract readable text from each shortlisted page and ask for a two-sentence summary.\nconst cfg = $('Config').first().json;\nconst candidates = $('Pick candidates').all();\nconst pages = $input.all();\nconst MAX_TEXT = 5000;\n\nfunction decodeEntities(text) {\n  const named = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ', hellip: '…', mdash: '—', ndash: '–' };\n  return text.replace(/&(#x[0-9a-f]+|#\\d+|[a-z]+);/gi, (match, code) => {\n    if (code[0] === '#') {\n      const value = code[1] === 'x' || code[1] === 'X' ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);\n      return Number.isFinite(value) && value > 0 && value <= 0x10ffff ? String.fromCodePoint(value) : match;\n    }\n    return named[code.toLowerCase()] ?? match;\n  });\n}\n\nfunction extractText(html) {\n  if (typeof html !== 'string' || html.length === 0) return '';\n  let body = html;\n  const main = body.match(/<article[\\s\\S]*?<\\/article>/i) ?? body.match(/<main[\\s\\S]*?<\\/main>/i);\n  if (main) body = main[0];\n  body = body\n    .replace(/<(script|style|noscript|svg|nav|header|footer|form|aside|iframe)\\b[\\s\\S]*?<\\/\\1>/gi, ' ')\n    .replace(/<!--[\\s\\S]*?-->/g, ' ')\n    .replace(/<br\\s*\\/?>|<\\/(p|div|li|h[1-6]|pre|blockquote|tr)>/gi, '\\n')\n    .replace(/<[^>]+>/g, ' ');\n  return decodeEntities(body)\n    .replace(/[ \\t\\f\\v]+/g, ' ')\n    .replace(/\\s*\\n\\s*/g, '\\n')\n    .replace(/\\n{2,}/g, '\\n')\n    .trim()\n    .slice(0, MAX_TEXT);\n}\n\nconst SYSTEM = `You write entries for a daily news digest for professional software developers.\nWrite exactly two plain sentences (at most 60 words) saying what the post is about and why a developer might care.\nUse only facts from the provided text. If the article text is missing or thin, describe what the link covers based on the title and site, without inventing details.\nNo hype, no emojis, no markdown, and do not start with \"This article\" or \"The post\".`;\n\nconst SCHEMA = {\n  type: 'object',\n  properties: { summary: { type: 'string', maxLength: 420 } },\n  required: ['summary'],\n};\n\nreturn candidates.map(({ json: post }, index) => {\n  const text = extractText(pages[index]?.json?.data);\n  const userLines = [\n    `Title: ${post.title}`,\n    `Source: ${post.source === 'devto' ? 'DEV Community' : 'Hacker News'}`,\n    `Site: ${post.domain ?? 'unknown'}`,\n  ];\n  if (post.summary) userLines.push(`Description: ${post.summary}`);\n  userLines.push(text.length >= 200 ? `Article text:\\n${text}` : 'Article text: (not available)');\n\n  return {\n    json: {\n      post: { ...post, extractedChars: text.length },\n      request: {\n        model: cfg.models.summary,\n        stream: false,\n        think: false,\n        keep_alive: '5m',\n        format: SCHEMA,\n        options: { temperature: 0.3, num_ctx: 8192 },\n        messages: [\n          { role: 'system', content: SYSTEM },\n          { role: 'user', content: userLines.join('\\n') },\n        ],\n      },\n    },\n  };\n});\n"
+      }
+    },
+    {
+      "id": "44c901bc-49fb-4dd1-af1d-8246d3cd6abf",
+      "name": "Summarize (qwen3:8b)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ollamaUrl }}/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 180000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "31f92782-4b8a-48fa-ab72-8ad4ec789bfc",
+      "name": "Build editor request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Attach summaries to the shortlist and build the single request for the editor model.\nconst cfg = $('Config').first().json;\nconst requests = $('Build summary requests').all();\nconst responses = $input.all();\n\nfunction parseModelJson(item) {\n  try {\n    return JSON.parse(item?.json?.message?.content ?? '');\n  } catch {\n    return null;\n  }\n}\n\nconst candidates = requests.map(({ json }, index) => {\n  const result = parseModelJson(responses[index]);\n  const generated = typeof result?.summary === 'string' ? result.summary.trim() : '';\n  return {\n    ...json.post,\n    digestSummary: generated || json.post.summary || json.post.qualityReason || json.post.title,\n    summaryFailed: generated.length === 0,\n  };\n});\n\nconst pickCount = Math.min(cfg.topN, candidates.length);\n\nconst SYSTEM = `You are the editor of \"Pixel Wires\", a daily news digest for professional software developers.\nFrom the candidates, choose the ${pickCount} best for today and order them, most important first.\nPrefer a mix of sources and topics, and skip near-duplicates of the same story.\nFor each pick write one short line (at most 20 words) on why it matters to developers.\nAlso write a 2-3 sentence intro for today's digest that names the main themes. Plain text, no emojis, no markdown.\nAnswer only with JSON.`;\n\nconst list = candidates\n  .map((post) =>\n    [\n      `id: ${post.id}`,\n      `title: ${post.title}`,\n      `source: ${post.source === 'devto' ? 'DEV' : 'Hacker News'} (${post.domain ?? 'unknown'})`,\n      `quality: ${post.quality}/10`,\n      `summary: ${post.digestSummary}`,\n    ].join('\\n'),\n  )\n  .join('\\n\\n');\n\nconst SCHEMA = {\n  type: 'object',\n  properties: {\n    intro: { type: 'string', maxLength: 600 },\n    picks: {\n      type: 'array',\n      minItems: pickCount,\n      maxItems: pickCount,\n      items: {\n        type: 'object',\n        properties: {\n          id: { type: 'string', enum: candidates.map((post) => post.id) },\n          why: { type: 'string', maxLength: 200 },\n        },\n        required: ['id', 'why'],\n      },\n    },\n  },\n  required: ['intro', 'picks'],\n};\n\nreturn [\n  {\n    json: {\n      candidates,\n      request: {\n        model: cfg.models.editor,\n        stream: false,\n        think: false,\n        keep_alive: '5m',\n        format: SCHEMA,\n        options: { temperature: 0.4, num_ctx: 16384 },\n        messages: [\n          { role: 'system', content: SYSTEM },\n          { role: 'user', content: `Date: ${cfg.dateLabel}\\n\\nCandidates:\\n\\n${list}` },\n        ],\n      },\n    },\n  },\n];\n"
+      }
+    },
+    {
+      "id": "7bbae8c8-886a-4635-abb8-d6ab4b4950ef",
+      "name": "Pick top posts (gemma4:12b)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.ollamaUrl }}/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.request) }}",
+        "options": {
+          "timeout": 300000,
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 0
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "373ed599-25b1-44f7-aeea-f9347c2f1734",
+      "name": "Build digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Assemble the digest JSON the website reads (see src/types/digest.ts).\nconst cfg = $('Config').first().json;\nconst { candidates } = $('Build editor request').first().json;\nconst editorOutput = $input.first()?.json;\n\nlet editor = null;\ntry {\n  editor = JSON.parse(editorOutput?.message?.content ?? '');\n} catch {\n  editor = null;\n}\n\nconst byId = new Map(candidates.map((post) => [post.id, post]));\nconst chosen = [];\nconst used = new Set();\n\nfor (const pick of Array.isArray(editor?.picks) ? editor.picks : []) {\n  const post = byId.get(pick?.id);\n  if (!post || used.has(post.id)) continue;\n  used.add(post.id);\n  chosen.push({ post, why: typeof pick.why === 'string' ? pick.why.trim() : '' });\n}\n\n// If the editor returned too few valid picks, fill up by quality score.\nfor (const post of candidates) {\n  if (chosen.length >= cfg.topN) break;\n  if (used.has(post.id)) continue;\n  used.add(post.id);\n  chosen.push({ post, why: '' });\n}\n\nconst items = chosen.slice(0, cfg.topN).map(({ post, why }, index) => ({\n  rank: index + 1,\n  summary: post.digestSummary,\n  why: why || null,\n  quality: post.quality,\n  article: {\n    id: post.id,\n    source: post.source,\n    nativeId: post.nativeId,\n    title: post.title,\n    summary: post.summary,\n    url: post.url,\n    domain: post.domain,\n    discussionUrl: post.discussionUrl,\n    coverImage: post.coverImage,\n    tags: post.tags,\n    author: post.author,\n    publishedAt: post.publishedAt,\n    readingTimeMinutes: post.readingTimeMinutes,\n    score: post.score,\n    commentCount: post.commentCount,\n  },\n}));\n\nconst intro =\n  typeof editor?.intro === 'string' && editor.intro.trim().length > 0\n    ? editor.intro.trim()\n    : `Today's ${items.length} most useful posts for developers from DEV and Hacker News.`;\n\nconst digest = {\n  version: 1,\n  date: cfg.date,\n  generatedAt: new Date().toISOString(),\n  intro,\n  items,\n  stats: {\n    fetched: candidates[0]?.fetchedCount ?? candidates.length,\n    shortlisted: candidates.length,\n    published: items.length,\n    scoringFailures: candidates[0]?.scoringFailures ?? 0,\n    summaryFailures: candidates.filter((post) => post.summaryFailed).length,\n    editorFallback: editor === null,\n  },\n  models: cfg.models,\n};\n\nreturn [{ json: { digest } }];\n"
+      }
+    },
+    {
+      "id": "13c0f1c7-8337-4256-a282-d4473b297eb4",
+      "name": "Read digest index",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        560
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $('Config').first().json.githubOwner }}/{{ $('Config').first().json.githubRepo }}/contents/public/digest/index.json?ref={{ $('Config').first().json.githubBranch }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github.raw+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "2200b222-7fa6-4320-ab0d-73bd1ad57e53",
+      "name": "Build commit files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Files for the commit: today's digest, latest.json and the list of available dates.\nconst cfg = $('Config').first().json;\nconst { digest } = $('Build digest').first().json;\nconst MAX_DATES = 180;\n\nlet dates = [];\nconst existing = $input.first()?.json;\n// A 404 on the first run is expected: the index doesn't exist yet.\nif (existing && !existing.error && typeof existing.data === 'string') {\n  try {\n    const parsed = JSON.parse(existing.data);\n    if (Array.isArray(parsed?.dates)) dates = parsed.dates.filter((d) => /^\\d{4}-\\d{2}-\\d{2}$/.test(d));\n  } catch {\n    dates = [];\n  }\n}\n\ndates = [cfg.date, ...dates.filter((d) => d !== cfg.date)].sort().reverse().slice(0, MAX_DATES);\n\nconst pretty = (value) => `${JSON.stringify(value, null, 2)}\\n`;\nconst files = [\n  { path: `public/digest/${cfg.date}.json`, content: pretty(digest) },\n  { path: 'public/digest/latest.json', content: pretty(digest) },\n  { path: 'public/digest/index.json', content: pretty({ version: 1, updatedAt: digest.generatedAt, dates }) },\n];\n\nconst message = [\n  `Daily digest ${cfg.date}`,\n  '',\n  `${digest.items.length} posts picked from ${digest.stats.fetched} by ${cfg.models.score}, ${cfg.models.summary} and ${cfg.models.editor}.`,\n  'Generated by the n8n \"Pixel Wires - Daily digest\" workflow.',\n].join('\\n');\n\nreturn [{ json: { files, message } }];\n"
+      }
+    },
+    {
+      "id": "2ae2739e-41ab-4ec4-a412-78fce13c2bdb",
+      "name": "Get branch ref",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        560
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $('Config').first().json.githubOwner }}/{{ $('Config').first().json.githubRepo }}/git/ref/heads/{{ $('Config').first().json.githubBranch }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "c884b3ab-e801-4dde-a2b9-de867091572e",
+      "name": "Get head commit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3600,
+        560
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $('Config').first().json.githubOwner }}/{{ $('Config').first().json.githubRepo }}/git/commits/{{ $json.object.sha }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "81807170-2bac-4f30-a9c4-9cdc0fe4280d",
+      "name": "Create tree",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('Config').first().json.githubOwner }}/{{ $('Config').first().json.githubRepo }}/git/trees",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ base_tree: $json.tree.sha, tree: $('Build commit files').first().json.files.map(f => ({ path: f.path, mode: '100644', type: 'blob', content: f.content })) }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "d2943619-f29e-4b5a-a6a3-964e9fb23c2e",
+      "name": "Create commit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('Config').first().json.githubOwner }}/{{ $('Config').first().json.githubRepo }}/git/commits",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $('Build commit files').first().json.message, tree: $json.sha, parents: [$('Get branch ref').first().json.object.sha] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "13598bf2-0eb2-4a58-a2a9-9a9a829d3852",
+      "name": "Update branch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4320,
+        560
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.github.com/repos/{{ $('Config').first().json.githubOwner }}/{{ $('Config').first().json.githubRepo }}/git/refs/heads/{{ $('Config').first().json.githubBranch }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "githubApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sha: $json.sha, force: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "8f31af00-fcb2-4b49-ac17-e0271495f241",
+      "name": "Build WhatsApp message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4560,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// The WhatsApp message: intro, every post's title, a \"why it matters\" line for the top\n// ones, and a link to the full page with summaries.\nconst cfg = $('Config').first().json;\nconst { digest } = $('Build digest').first().json;\nconst commitSha = $('Create commit').first().json.sha;\n\nconst sourceLabel = { devto: 'DEV', hackernews: 'HN' };\nconst label = (item) => sourceLabel[item.article.source] ?? item.article.source;\nconst detailed = digest.items.slice(0, cfg.postsInWhatsApp);\nconst rest = digest.items.slice(cfg.postsInWhatsApp);\n\nconst lines = [`*Pixel Wires · Daily digest*`, `_${cfg.dateLabel}_`, '', digest.intro, ''];\n\n// Top posts: title, one line on why it matters, link.\nfor (const item of detailed) {\n  lines.push(`*${item.rank}. ${item.article.title}* (${label(item)})`);\n  lines.push(item.why || item.summary);\n  lines.push(item.article.url);\n  lines.push('');\n}\n\n// The rest: title and link only, so the whole list is in the message.\nif (rest.length > 0) {\n  lines.push('*Also today*');\n  for (const item of rest) {\n    lines.push(`${item.rank}. ${item.article.title} (${label(item)})`);\n    lines.push(item.article.url);\n  }\n  lines.push('');\n}\n\nconst pageUrl = `${cfg.siteUrl.replace(/\\/+$/, '')}/today/${cfg.date}`;\nlines.push(`All ${digest.items.length} with summaries: ${pageUrl}`);\nlines.push('_The page goes live about a minute after this message._');\n\nreturn [\n  {\n    json: {\n      chatId: `${cfg.whatsappTo}@c.us`,\n      text: lines.join('\\n'),\n      // Same key on an automatic retry, so a retried send can't arrive twice.\n      idempotencyKey: `pixelwire-digest-${cfg.date}-${String(commitSha).slice(0, 12)}`,\n    },\n  },\n];\n"
+      }
+    },
+    {
+      "id": "75fb40d5-4616-4ab5-afa1-cc6512db90b3",
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4800,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.openwaUrl }}/api/sessions/{{ encodeURIComponent($('Config').first().json.openwaSessionId) }}/messages/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.idempotencyKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chatId: $json.chatId, text: $json.text, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000
+    }
+  ],
+  "connections": {
+    "Every day 07:00": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run manually": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch DEV top posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch DEV top posts": {
+      "main": [
+        [
+          {
+            "node": "Fetch HN front page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch HN front page": {
+      "main": [
+        [
+          {
+            "node": "Normalize posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize posts": {
+      "main": [
+        [
+          {
+            "node": "Build scoring requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build scoring requests": {
+      "main": [
+        [
+          {
+            "node": "Score posts (qwen3.5:4b)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score posts (qwen3.5:4b)": {
+      "main": [
+        [
+          {
+            "node": "Pick candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick candidates": {
+      "main": [
+        [
+          {
+            "node": "Fetch article pages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch article pages": {
+      "main": [
+        [
+          {
+            "node": "Build summary requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build summary requests": {
+      "main": [
+        [
+          {
+            "node": "Summarize (qwen3:8b)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize (qwen3:8b)": {
+      "main": [
+        [
+          {
+            "node": "Build editor request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build editor request": {
+      "main": [
+        [
+          {
+            "node": "Pick top posts (gemma4:12b)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick top posts (gemma4:12b)": {
+      "main": [
+        [
+          {
+            "node": "Build digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build digest": {
+      "main": [
+        [
+          {
+            "node": "Read digest index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read digest index": {
+      "main": [
+        [
+          {
+            "node": "Build commit files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build commit files": {
+      "main": [
+        [
+          {
+            "node": "Get branch ref",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get branch ref": {
+      "main": [
+        [
+          {
+            "node": "Get head commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get head commit": {
+      "main": [
+        [
+          {
+            "node": "Create tree",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create tree": {
+      "main": [
+        [
+          {
+            "node": "Create commit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create commit": {
+      "main": [
+        [
+          {
+            "node": "Update branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update branch": {
+      "main": [
+        [
+          {
+            "node": "Build WhatsApp message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build WhatsApp message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "errorWorkflow": "pwDigestAlert001"
+  },
+  "tags": []
+}

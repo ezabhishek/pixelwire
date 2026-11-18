@@ -5,7 +5,8 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'node_modules'] },
+  // n8n/code runs inside n8n Code nodes, with n8n's own globals ($, $input, $now).
+  { ignores: ['dist', 'coverage', 'node_modules', 'n8n', 'scripts'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

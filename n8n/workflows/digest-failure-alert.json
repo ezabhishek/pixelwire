@@ -1,0 +1,112 @@
+{
+  "id": "pwDigestAlert001",
+  "name": "Pixel Wires · Digest failure alert",
+  "active": false,
+  "nodes": [
+    {
+      "id": "cc1c085b-75b1-4cfc-a15d-1912adb69360",
+      "name": "Alert notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -200
+      ],
+      "parameters": {
+        "width": 520,
+        "height": 160,
+        "color": 3,
+        "content": "## Pixel Wires · Digest failure alert\nRuns automatically when the daily digest fails (set as its Error workflow).\nFill in **Build failure alert** and select your **OpenWA API key** credential in **Send failure alert**."
+      }
+    },
+    {
+      "id": "55cec9cb-2b50-4d5e-a300-1edd069d8ab5",
+      "name": "When the digest fails",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        100
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "2b0f48a4-5647-412d-ae1e-5098de732bef",
+      "name": "Build failure alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Runs when the daily digest workflow fails: sends a short WhatsApp alert.\n// ─── Edit these to match the Config node of the daily digest workflow ───────\nconst CONFIG = {\n  whatsappTo: '',\n  openwaSessionId: '',\n  openwaUrl: 'http://host.docker.internal:2785',\n};\n// ──────────────────────────────────────────────────────────────────────────────\n\nif (!/^\\d{8,15}$/.test(CONFIG.whatsappTo) || !CONFIG.openwaSessionId || CONFIG.openwaSessionId.startsWith('__')) {\n  throw new Error('Failure alert: set whatsappTo and openwaSessionId in this node.');\n}\n\nconst data = $input.first().json;\nconst execution = data.execution ?? {};\nconst error = execution.error ?? {};\nconst nodeName = error.node?.name ?? execution.lastNodeExecuted ?? 'unknown node';\nconst message = String(error.message ?? 'Unknown error').slice(0, 500);\n\nconst lines = [\n  '*Pixel Wires · digest failed*',\n  `Workflow: ${data.workflow?.name ?? 'Daily digest'}`,\n  `Step: ${nodeName}`,\n  `Error: ${message}`,\n];\nif (execution.url) lines.push(`Details: ${execution.url}`);\nlines.push('', \"Yesterday's digest stays on the site until the next successful run.\");\n\nreturn [\n  {\n    json: {\n      openwaUrl: CONFIG.openwaUrl,\n      openwaSessionId: CONFIG.openwaSessionId,\n      chatId: `${CONFIG.whatsappTo}@c.us`,\n      text: lines.join('\\n'),\n      idempotencyKey: `pixelwire-digest-failure-${execution.id ?? Date.now()}`,\n    },\n  },\n];\n"
+      }
+    },
+    {
+      "id": "75861df8-d19b-4660-a4c9-310f1b68458d",
+      "name": "Send failure alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.openwaUrl }}/api/sessions/{{ encodeURIComponent($json.openwaSessionId) }}/messages/send-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ $json.idempotencyKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chatId: $json.chatId, text: $json.text, linkPreview: false }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 10000
+    }
+  ],
+  "connections": {
+    "When the digest fails": {
+      "main": [
+        [
+          {
+            "node": "Build failure alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build failure alert": {
+      "main": [
+        [
+          {
+            "node": "Send failure alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata"
+  },
+  "tags": []
+}

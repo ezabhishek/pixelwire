@@ -1,4 +1,4 @@
-import { ArrowBigUp, Bookmark, Flame, Hash, Newspaper, X, type LucideIcon } from 'lucide-react';
+import { ArrowBigUp, Bookmark, Flame, Hash, Newspaper, Sparkles, X, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink } from 'react-router-dom';
@@ -20,6 +20,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
+  { to: '/today', label: 'Today', icon: Sparkles },
   { to: '/', label: 'My feed', icon: Newspaper, end: true },
   { to: '/popular', label: 'Popular', icon: Flame },
   { to: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
