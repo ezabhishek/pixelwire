@@ -1,13 +1,13 @@
 {
   "version": 1,
   "date": "2026-11-21",
-  "generatedAt": "2026-11-20T19:12:43.608Z",
-  "intro": "Today's digest covers critical security patches in OpenSSL, major updates to PostgreSQL and FFmpeg, and the rise of AI-driven hardware design. We also explore new language features in C# and the evolving landscape of privacy and infrastructure.",
+  "generatedAt": "2026-11-20T19:25:07.448Z",
+  "intro": "Today's digest highlights significant advancements in AI-driven hardware design, critical security patches for OpenSSL, and new language features in C# and PostgreSQL. We also explore the evolving landscape of agentic engineering and the challenges of privacy in an AI-integrated mobile ecosystem.",
   "items": [
     {
       "rank": 1,
-      "summary": "OpenSSL addresses a buffer overflow in EVP_EncodeBlock() via CVE-2026-121481 by returning -1 for invalid inputs, with similar fixes for EVP_DecodeBlock() and base64encode(). Developers should update to prevent potential exploitation via command-line inputs.",
-      "why": "A critical buffer overflow in OpenSSL requires immediate updates to prevent high-severity exploits.",
+      "summary": "OpenSSL addresses a buffer overflow in EVP_EncodeBlock() by returning -1 for invalid inputs, fixing CVE-2026-121481. Developers should update to prevent potential exploitation via large inputs.",
+      "why": "Critical buffer overflow in OpenSSL requires immediate updates to prevent high-severity security exploits.",
       "quality": 9,
       "article": {
         "id": "hackernews:50569226",
@@ -21,7 +21,8 @@
         "coverImage": null,
         "tags": [
           "security",
-          "opensource"
+          "opensource",
+          "linux"
         ],
         "author": {
           "name": "JacobHenner",
@@ -31,44 +32,13 @@
         "publishedAt": "2026-11-20T02:01:09Z",
         "readingTimeMinutes": null,
         "score": 353,
-        "commentCount": 309
+        "commentCount": 311
       }
     },
     {
       "rank": 2,
-      "summary": "PostgreSQL 19 introduces new SQL features like IGNORE NULLS and JSONPath transformations, along with improvements in replication and maintenance. Developers can try these features in a live sandbox environment with real PostgreSQL 19 servers.",
-      "why": "PostgreSQL 19 introduces significant SQL features and JSONPath improvements for backend developers.",
-      "quality": 8,
-      "article": {
-        "id": "hackernews:50578117",
-        "source": "hackernews",
-        "nativeId": "50578117",
-        "title": "PostgreSQL 19: A hands-on tour with runnable browser examples",
-        "summary": null,
-        "url": "https://certuvia.com/blog/postgres-19",
-        "domain": "certuvia.com",
-        "discussionUrl": "https://news.ycombinator.com/item?id=50578117",
-        "coverImage": null,
-        "tags": [
-          "database",
-          "javascript",
-          "webdev"
-        ],
-        "author": {
-          "name": "petrpravda",
-          "handle": "petrpravda",
-          "profileUrl": "https://news.ycombinator.com/user?id=petrpravda"
-        },
-        "publishedAt": "2026-11-20T17:08:56Z",
-        "readingTimeMinutes": null,
-        "score": 19,
-        "commentCount": 1
-      }
-    },
-    {
-      "rank": 3,
-      "summary": "Frostbite is a new CPU architecture designed and verified by AI, achieving a 4.59x performance-per-watt gain over a modern CPU core. Developers may care as it demonstrates AI's potential to co-design hardware and software, leading to significant performance improvements and new architectural possibilities.",
-      "why": "Frostbite demonstrates how AI can design and verify high-performance CPU architectures.",
+      "summary": "Frostbite is a new CPU architecture designed and verified by AI, achieving 4.59x performance-per-watt improvement over a modern CPU core. Developers may care as it demonstrates AI's potential to co-design hardware and software, leading to significant performance gains and new architectural possibilities.",
+      "why": "Demonstrates AI's ability to design and verify CPU architectures with massive performance-per-watt gains.",
       "quality": 9,
       "article": {
         "id": "hackernews:50572503",
@@ -91,14 +61,110 @@
         },
         "publishedAt": "2026-11-20T10:01:41Z",
         "readingTimeMinutes": null,
-        "score": 520,
-        "commentCount": 282
+        "score": 526,
+        "commentCount": 285
+      }
+    },
+    {
+      "rank": 3,
+      "summary": "An error's code may not persist in traces despite being present in the application, affecting diagnostic accuracy. Developers should verify which error fields survive serialization to ensure reliable debugging and policy enforcement.",
+      "why": "Crucial for debugging; developers must ensure error metadata survives serialization for reliable production tracing.",
+      "quality": 8,
+      "article": {
+        "id": "devto:5031602",
+        "source": "devto",
+        "nativeId": "5031602",
+        "title": "Your Error Survived the Wrapper. Did Its Code Survive the Trace?",
+        "summary": "Suppose an instrumented operation throws an error with code: \"ETIMEDOUT\". Your application catches...",
+        "url": "https://dev.to/gde/your-error-survived-the-wrapper-did-its-code-survive-the-trace-17gg",
+        "domain": "dev.to",
+        "discussionUrl": "https://dev.to/gde/your-error-survived-the-wrapper-did-its-code-survive-the-trace-17gg#comments",
+        "coverImage": "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Farticles%2Fzyfbncr2yf3yx5znyex3.jpg",
+        "tags": [
+          "typescript",
+          "debugging",
+          "observability",
+          "testing"
+        ],
+        "author": {
+          "name": "Raju Dandigam",
+          "handle": "raju_dandigam",
+          "avatarUrl": "https://media2.dev.to/dynamic/image/width=90,height=90,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F1726463%2F38d1e46f-d122-4fa3-b130-772169c24466.png",
+          "profileUrl": "https://dev.to/raju_dandigam"
+        },
+        "publishedAt": "2026-11-20T08:00:00Z",
+        "readingTimeMinutes": 4,
+        "score": 27,
+        "commentCount": 5
       }
     },
     {
       "rank": 4,
-      "summary": "C# 15 introduces union types, allowing developers to define data structures that can hold one of several possible types. Developers can experiment with these features using a GitHub repository that provides examples and playgrounds for .NET 11 and C# 15.",
-      "why": "C# 15 introduces union types, offering a new way to handle complex data structures.",
+      "summary": "The article argues that reliable agentic engineering requires a factory system that verifies changes through evidence, not blind trust in agents. Developers should care because it highlights how to build systems that catch mistakes, limit their impact, and improve over time.",
+      "why": "Provides a framework for building reliable agentic systems by prioritizing verification over blind trust.",
+      "quality": 8,
+      "article": {
+        "id": "devto:5080717",
+        "source": "devto",
+        "nativeId": "5080717",
+        "title": "Don't Trust the Agent. Trust the Factory.",
+        "summary": "The path to reliable agentic engineering isn’t waiting for models to stop making mistakes. It’s...",
+        "url": "https://dev.to/remojansen/dont-trust-the-agent-trust-the-factory-fmc",
+        "domain": "dev.to",
+        "discussionUrl": "https://dev.to/remojansen/dont-trust-the-agent-trust-the-factory-fmc#comments",
+        "coverImage": "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Farticles%2Frqjepozsl2frbhoxcox8.png",
+        "tags": [
+          "ai",
+          "agents",
+          "discuss",
+          "softwaredevelopment"
+        ],
+        "author": {
+          "name": "Remo H. Jansen",
+          "handle": "remojansen",
+          "avatarUrl": "https://media2.dev.to/dynamic/image/width=90,height=90,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F24875%2F8708b5ec-0a58-4900-9c87-6f5ab2540dd7.png",
+          "profileUrl": "https://dev.to/remojansen"
+        },
+        "publishedAt": "2026-11-20T10:28:31Z",
+        "readingTimeMinutes": 4,
+        "score": 5,
+        "commentCount": 2
+      }
+    },
+    {
+      "rank": 5,
+      "summary": "A language model can rewrite its own weights through self-reasoning without training or gradients, improving accuracy on unseen tasks. Developers may care as this could lead to more efficient, self-improving models that don't require retraining or external prompts.",
+      "why": "Explores models that can autonomously modify their own weights, potentially revolutionizing self-improving software.",
+      "quality": 9,
+      "article": {
+        "id": "hackernews:50577265",
+        "source": "hackernews",
+        "nativeId": "50577265",
+        "title": "Language Models Can Rewrite Their Own Weights",
+        "summary": null,
+        "url": "https://arxiv.org/abs/2611.21885",
+        "domain": "arxiv.org",
+        "discussionUrl": "https://news.ycombinator.com/item?id=50577265",
+        "coverImage": null,
+        "tags": [
+          "ai",
+          "machinelearning"
+        ],
+        "author": {
+          "name": "lwhsiao",
+          "handle": "lwhsiao",
+          "profileUrl": "https://news.ycombinator.com/user?id=lwhsiao"
+        },
+        "publishedAt": "2026-11-20T16:29:06Z",
+        "readingTimeMinutes": null,
+        "score": 209,
+        "commentCount": 86
+      }
+    },
+    {
+      "rank": 6,
+      "summary": "C# 15 introduces union types, offering a new way to model data with compiler-checked exhaustive matching. Developers can experiment with these features using a .NET 11 playground repository on GitHub.",
+      "why": "C# 15 union types offer a safer, compiler-checked way to model complex data structures.",
       "quality": 9,
       "article": {
         "id": "devto:5067167",
@@ -129,10 +195,41 @@
       }
     },
     {
-      "rank": 5,
-      "summary": "Signal is blocking AI agents on iOS 27 and Android from accessing its app data to protect user privacy. Developers care because these OS-level AI integrations threaten app-level privacy and limit tools to prevent data exposure.",
-      "why": "Signal is blocking OS-level AI agents to protect app-level user privacy.",
-      "quality": 9,
+      "rank": 7,
+      "summary": "PostgreSQL 19 introduces new SQL features like IGNORE NULLS and JSONPath transformations, along with improved replication and maintenance tools. Developers can test these features in a live sandbox environment with real PostgreSQL 19 servers.",
+      "why": "PostgreSQL 19 introduces significant SQL improvements and JSONPath transformations for better data handling.",
+      "quality": 8,
+      "article": {
+        "id": "hackernews:50578117",
+        "source": "hackernews",
+        "nativeId": "50578117",
+        "title": "PostgreSQL 19: A hands-on tour with runnable browser examples",
+        "summary": null,
+        "url": "https://certuvia.com/blog/postgres-19",
+        "domain": "certuvia.com",
+        "discussionUrl": "https://news.ycombinator.com/item?id=50578117",
+        "coverImage": null,
+        "tags": [
+          "database",
+          "javascript",
+          "webdev"
+        ],
+        "author": {
+          "name": "petrpravda",
+          "handle": "petrpravda",
+          "profileUrl": "https://news.ycombinator.com/user?id=petrpravda"
+        },
+        "publishedAt": "2026-11-20T17:08:56Z",
+        "readingTimeMinutes": null,
+        "score": 22,
+        "commentCount": 1
+      }
+    },
+    {
+      "rank": 8,
+      "summary": "Signal is blocking AI agents on iOS 27 and Android from accessing its app data to protect user privacy. Developers care because these OS-level AI integrations threaten app-level privacy and require new tools to prevent data exposure.",
+      "why": "Highlights the growing conflict between OS-level AI integrations and application-level data privacy.",
+      "quality": 8,
       "article": {
         "id": "hackernews:50572348",
         "source": "hackernews",
@@ -154,108 +251,14 @@
         },
         "publishedAt": "2026-11-20T09:42:16Z",
         "readingTimeMinutes": null,
-        "score": 325,
-        "commentCount": 202
-      }
-    },
-    {
-      "rank": 6,
-      "summary": "FFmpeg 9.1 'Gauss' was released on 2026-11-20 as the latest stable version from the 9.1 branch, including updated library versions. Developers should care as it offers new features and security patches, though the development branch is recommended for active contributions and faster bug fixes.",
-      "why": "FFmpeg 9.1 Gauss provides the latest stable updates for multimedia processing and library support.",
-      "quality": 9,
-      "article": {
-        "id": "hackernews:50569998",
-        "source": "hackernews",
-        "nativeId": "50569998",
-        "title": "FFmpeg 9.1 'Gauss'",
-        "summary": null,
-        "url": "https://ffmpeg.org/download.html#release_9.1",
-        "domain": "ffmpeg.org",
-        "discussionUrl": "https://news.ycombinator.com/item?id=50569998",
-        "coverImage": null,
-        "tags": [
-          "opensource",
-          "linux"
-        ],
-        "author": {
-          "name": "gyan",
-          "handle": "gyan",
-          "profileUrl": "https://news.ycombinator.com/user?id=gyan"
-        },
-        "publishedAt": "2026-11-20T04:02:39Z",
-        "readingTimeMinutes": null,
-        "score": 271,
-        "commentCount": 35
-      }
-    },
-    {
-      "rank": 7,
-      "summary": "Ankit Gupta used a coding agent to program an FPGA for LLM inference, achieving 213 tokens per second, 33× faster than the baseline. Developers might care as it shows how agents can handle complex hardware programming and optimization, reducing manual effort and cost.",
-      "why": "Shows how coding agents can optimize FPGA hardware for LLM inference at massive speeds.",
-      "quality": 9,
-      "article": {
-        "id": "hackernews:50579297",
-        "source": "hackernews",
-        "nativeId": "50579297",
-        "title": "Vibecoding an Inference Chip",
-        "summary": null,
-        "url": "https://ankitg.me/blog/vibecoding-inference-chip/",
-        "domain": "ankitg.me",
-        "discussionUrl": "https://news.ycombinator.com/item?id=50579297",
-        "coverImage": null,
-        "tags": [
-          "ai",
-          "machinelearning",
-          "rust"
-        ],
-        "author": {
-          "name": "ankitvgupta",
-          "handle": "ankitvgupta",
-          "profileUrl": "https://news.ycombinator.com/user?id=ankitvgupta"
-        },
-        "publishedAt": "2026-11-20T18:15:16Z",
-        "readingTimeMinutes": null,
-        "score": 15,
-        "commentCount": 0
-      }
-    },
-    {
-      "rank": 8,
-      "summary": "ggml-tpu enables running llama.cpp on Google Cloud TPU by compiling its graph into XLA programs. Developers can leverage TPUs for faster inference with minimal code changes.",
-      "why": "Enables running llama.cpp on Cloud TPUs via XLA for faster model inference.",
-      "quality": 9,
-      "article": {
-        "id": "devto:5076376",
-        "source": "devto",
-        "nativeId": "5076376",
-        "title": "llama.cpp on a Cloud TPU: An Unofficial ggml Backend Through XLA",
-        "summary": "ggml-tpu lowers each llama.cpp graph to one StableHLO program, compiles it with XLA and runs it on a TPU through libtpu. Gemma 4 E2B on one TPU v5e chip: build, test every operation, serve, chat, speculative decoding, and a three-cell Colab notebook.",
-        "url": "https://dev.to/gde/llamacpp-on-a-cloud-tpu-an-unofficial-ggml-backend-through-xla-5j8",
-        "domain": "dev.to",
-        "discussionUrl": "https://dev.to/gde/llamacpp-on-a-cloud-tpu-an-unofficial-ggml-backend-through-xla-5j8#comments",
-        "coverImage": "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fraw.githubusercontent.com%2Fxbill9%2Fggml-tpu%2Fmain%2Farticles%2Fllamacpp-tpu%2Fdevto-cover.71c7edf3.jpg",
-        "tags": [
-          "tpu",
-          "llamacpp",
-          "gemma",
-          "googlecloud"
-        ],
-        "author": {
-          "name": "xbill",
-          "handle": "xbill",
-          "avatarUrl": "https://media2.dev.to/dynamic/image/width=90,height=90,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3490099%2Fc6a975d0-cd94-485d-82b1-14ed5b344fcf.jpg",
-          "profileUrl": "https://dev.to/xbill"
-        },
-        "publishedAt": "2026-11-19T20:22:11Z",
-        "readingTimeMinutes": 10,
-        "score": 18,
-        "commentCount": 1
+        "score": 333,
+        "commentCount": 213
       }
     },
     {
       "rank": 9,
-      "summary": "A Docker container marked unhealthy continued serving traffic because health checks don't affect traffic routing or restart policies. Developers should understand that health checks only report status, not enforce behavior.",
-      "why": "Clarifies that Docker health checks do not automatically stop containers from serving traffic.",
+      "summary": "A Docker container marked unhealthy continued serving traffic because health checks don't affect traffic routing or restart policies. Developers should understand that health checks only report status, not enforce behavior, requiring additional orchestration for failover.",
+      "why": "Clarifies a common misconception: Docker health checks do not automatically stop traffic routing.",
       "quality": 8,
       "article": {
         "id": "devto:5079032",
@@ -287,32 +290,35 @@
     },
     {
       "rank": 10,
-      "summary": "A language model can rewrite its own weights through self-reasoning without training or gradients, improving accuracy on unseen tasks. Developers may care as this could lead to more efficient, self-improving models that don't require retraining or external prompts.",
-      "why": "New research shows models can rewrite their own weights without traditional training gradients.",
+      "summary": "An unofficial ggml backend, ggml-tpu, allows running llama.cpp on Google Cloud TPU by compiling its graph into XLA programs. Developers can leverage TPUs for faster inference with minimal changes to their llama.cpp setup.",
+      "why": "Enables running llama.cpp on Cloud TPUs via XLA for high-performance inference scaling.",
       "quality": 9,
       "article": {
-        "id": "hackernews:50577265",
-        "source": "hackernews",
-        "nativeId": "50577265",
-        "title": "Language Models Can Rewrite Their Own Weights",
-        "summary": null,
-        "url": "https://arxiv.org/abs/2611.21885",
-        "domain": "arxiv.org",
-        "discussionUrl": "https://news.ycombinator.com/item?id=50577265",
-        "coverImage": null,
+        "id": "devto:5076376",
+        "source": "devto",
+        "nativeId": "5076376",
+        "title": "llama.cpp on a Cloud TPU: An Unofficial ggml Backend Through XLA",
+        "summary": "ggml-tpu lowers each llama.cpp graph to one StableHLO program, compiles it with XLA and runs it on a TPU through libtpu. Gemma 4 E2B on one TPU v5e chip: build, test every operation, serve, chat, speculative decoding, and a three-cell Colab notebook.",
+        "url": "https://dev.to/gde/llamacpp-on-a-cloud-tpu-an-unofficial-ggml-backend-through-xla-5j8",
+        "domain": "dev.to",
+        "discussionUrl": "https://dev.to/gde/llamacpp-on-a-cloud-tpu-an-unofficial-ggml-backend-through-xla-5j8#comments",
+        "coverImage": "https://media2.dev.to/dynamic/image/width=1000,height=420,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fraw.githubusercontent.com%2Fxbill9%2Fggml-tpu%2Fmain%2Farticles%2Fllamacpp-tpu%2Fdevto-cover.71c7edf3.jpg",
         "tags": [
-          "machinelearning",
-          "ai"
+          "tpu",
+          "llamacpp",
+          "gemma",
+          "googlecloud"
         ],
         "author": {
-          "name": "lwhsiao",
-          "handle": "lwhsiao",
-          "profileUrl": "https://news.ycombinator.com/user?id=lwhsiao"
+          "name": "xbill",
+          "handle": "xbill",
+          "avatarUrl": "https://media2.dev.to/dynamic/image/width=90,height=90,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.us-east-2.amazonaws.com%2Fuploads%2Fuser%2Fprofile_image%2F3490099%2Fc6a975d0-cd94-485d-82b1-14ed5b344fcf.jpg",
+          "profileUrl": "https://dev.to/xbill"
         },
-        "publishedAt": "2026-11-20T16:29:06Z",
-        "readingTimeMinutes": null,
-        "score": 198,
-        "commentCount": 84
+        "publishedAt": "2026-11-19T20:22:11Z",
+        "readingTimeMinutes": 10,
+        "score": 18,
+        "commentCount": 1
       }
     }
   ],
